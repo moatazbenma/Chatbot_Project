@@ -73,7 +73,7 @@ TEMPLATES = [
 
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+    "https://chatbot-project-m2036opgh-moatazbenmas-projects.vercel.app/",
 ]
 
 
