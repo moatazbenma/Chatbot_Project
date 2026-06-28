@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useState, useRef, useEffect, useCallback } from "react";
 
-const QUICK_QUESTIONS = [
+const QUICK_QUESTIONS: string[] = [
   "How do I calculate my GPA?",
   "What are graduation requirements?",
   "How do I register for courses?",
@@ -16,7 +16,15 @@ const MOCK_SESSIONS = [
   { id: 3, title: "Graduation Checklist", date: "Jun 24" },
 ];
 
-const INITIAL_MESSAGES = [
+interface Message {
+  id: number;
+  role: "user" | "advisor";
+  text: string;
+  time: string;
+  liked?: boolean;
+}
+
+const INITIAL_MESSAGES: Message[] = [
   {
     id: 0,
     role: "advisor",
@@ -25,7 +33,7 @@ const INITIAL_MESSAGES = [
   },
 ];
 
-function AdvisorAvatar({ size = "md" }) {
+function AdvisorAvatar({ size = "md" }: { size?: "sm" | "md" }) {
   const sz = size === "sm" ? "w-8 h-8" : "w-9 h-9";
   return (
     <div className={`${sz} rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center flex-shrink-0 shadow-md shadow-indigo-500/30`}>
@@ -36,7 +44,7 @@ function AdvisorAvatar({ size = "md" }) {
   );
 }
 
-function CopyButton({ text }) {
+function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
     navigator.clipboard.writeText(text).then(() => {
@@ -64,7 +72,7 @@ function CopyButton({ text }) {
   );
 }
 
-function ThumbsUp({ onLike, liked }) {
+function ThumbsUp({ onLike, liked }: { onLike: () => void; liked: boolean }) {
   return (
     <button
       onClick={onLike}
@@ -77,7 +85,7 @@ function ThumbsUp({ onLike, liked }) {
   );
 }
 
-function Message({ msg, onLike }) {
+function MessageBubble({ msg, onLike }: { msg: Message; onLike: (id: number) => void }) {
   const isUser = msg.role === "user";
   return (
     <div
@@ -89,7 +97,7 @@ function Message({ msg, onLike }) {
         {!isUser && (
           <span className="text-[11px] font-medium text-indigo-500 mb-1 ml-1">Academic Advisor</span>
         )}
-        <div className={`relative px-4 py-3 text-sm leading-relaxed ${
+        <div className={`px-4 py-3 text-sm leading-relaxed ${
           isUser
             ? "bg-gradient-to-br from-indigo-500 to-violet-600 text-white rounded-[18px] rounded-br-[4px] shadow-lg shadow-indigo-500/20"
             : "bg-white text-slate-700 border border-slate-100 rounded-[18px] rounded-bl-[4px] shadow-sm"
@@ -101,7 +109,7 @@ function Message({ msg, onLike }) {
           {!isUser && (
             <>
               <CopyButton text={msg.text} />
-              <ThumbsUp onLike={() => onLike(msg.id)} liked={msg.liked} />
+              <ThumbsUp onLike={() => onLike(msg.id)} liked={!!msg.liked} />
             </>
           )}
         </div>
@@ -125,12 +133,12 @@ function TypingDots() {
   );
 }
 
-function ScrollToBottom({ show, onClick }) {
+function ScrollToBottom({ show, onClick }: { show: boolean; onClick: () => void }) {
   if (!show) return null;
   return (
     <button
       onClick={onClick}
-      className="absolute bottom-6 right-6 w-9 h-9 bg-white border border-slate-200 rounded-full shadow-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-indigo-100 transition-all duration-200"
+      className="absolute bottom-6 right-6 w-9 h-9 bg-white border border-slate-200 rounded-full shadow-lg flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all duration-200"
       style={{ animation: "fadeUp 0.2s ease-out" }}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -141,15 +149,16 @@ function ScrollToBottom({ show, onClick }) {
 }
 
 export default function Dashboard() {
-  const [command, setCommand] = useState("");
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
-  const [loading, setLoading] = useState(false);
-  const [activeSession, setActiveSession] = useState(0);
-  const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState("quick"); // "quick" | "history"
-  const bottomRef = useRef(null);
-  const textareaRef = useRef(null);
-  const scrollRef = useRef(null);
+  const [command, setCommand] = useState<string>("");
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [activeSession, setActiveSession] = useState<number | null>(null);
+  const [showScrollBtn, setShowScrollBtn] = useState<boolean>(false);
+  const [sidebarTab, setSidebarTab] = useState<"quick" | "history">("quick");
+
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -157,9 +166,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, loading]);
+  }, [messages, loading, scrollToBottom]);
 
-  // Auto-resize textarea
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -167,18 +175,17 @@ export default function Dashboard() {
     ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
   }, [command]);
 
-  // Show scroll-to-bottom button
   const handleScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
     setShowScrollBtn(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
   };
 
-  const sendMessage = async (text) => {
-    const content = (text || command).trim();
+  const sendMessage = async (text?: string) => {
+    const content = (text ?? command).trim();
     if (!content || loading) return;
 
-    const userMsg = {
+    const userMsg: Message = {
       id: Date.now(),
       role: "user",
       text: content,
@@ -210,12 +217,15 @@ export default function Dashboard() {
     }
   };
 
-  const handleLike = (id) => {
+  const handleLike = (id: number) => {
     setMessages(prev => prev.map(m => m.id === id ? { ...m, liked: !m.liked } : m));
   };
 
-  const handleKey = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
   };
 
   const startNewChat = () => {
@@ -280,17 +290,17 @@ export default function Dashboard() {
           {/* Tabs */}
           <div className="px-4 mb-3">
             <div className="flex bg-white/5 rounded-lg p-0.5">
-              {[["quick", "Quick"], ["history", "History"]].map(([val, label]) => (
+              {(["quick", "history"] as const).map(val => (
                 <button
                   key={val}
                   onClick={() => setSidebarTab(val)}
-                  className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-all duration-150 ${
+                  className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-all duration-150 capitalize ${
                     sidebarTab === val
                       ? "bg-white/10 text-white shadow-sm"
                       : "text-slate-400 hover:text-slate-300"
                   }`}
                 >
-                  {label}
+                  {val === "quick" ? "Quick" : "History"}
                 </button>
               ))}
             </div>
@@ -386,7 +396,6 @@ export default function Dashboard() {
             onScroll={handleScroll}
             className="chat-scroll flex-1 overflow-y-auto px-8 py-7 bg-slate-50 relative"
           >
-            {/* Date divider */}
             <div className="flex items-center gap-3 mb-6">
               <div className="flex-1 h-px bg-slate-200" />
               <span className="text-[11px] text-slate-400 font-medium">Today</span>
@@ -394,7 +403,7 @@ export default function Dashboard() {
             </div>
 
             {messages.map(msg => (
-              <Message key={msg.id} msg={msg} onLike={handleLike} />
+              <MessageBubble key={msg.id} msg={msg} onLike={handleLike} />
             ))}
             {loading && <TypingDots />}
             <div ref={bottomRef} />
