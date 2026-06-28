@@ -196,7 +196,7 @@ export default function Dashboard() {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://127.0.0.1:8000/api/chat/", { message: content });
+      const response = await axios.post("https://chatbot-project-dqu7.onrender.com/api/chat/", { message: content });
       setMessages(prev => [...prev, {
         id: Date.now() + 1,
         role: "advisor",
