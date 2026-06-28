@@ -56,7 +56,7 @@ function CopyButton({ text }: { text: string }) {
     <button
       onClick={handleCopy}
       title="Copy"
-      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-150 flex items-center gap-1 text-[11px]"
+      className="md:opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all duration-150 flex items-center gap-1 text-[11px]"
     >
       {copied ? (
         <>
@@ -76,7 +76,7 @@ function ThumbsUp({ onLike, liked }: { onLike: () => void; liked: boolean }) {
   return (
     <button
       onClick={onLike}
-      className={`opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all duration-150 ${liked ? "text-indigo-500" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"}`}
+      className={`md:opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all duration-150 ${liked ? "text-indigo-500" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"}`}
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill={liked ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
@@ -93,7 +93,7 @@ function MessageBubble({ msg, onLike }: { msg: Message; onLike: (id: number) => 
       style={{ animation: "fadeUp 0.25s ease-out" }}
     >
       {!isUser && <AdvisorAvatar />}
-      <div className={`max-w-[75%] flex flex-col ${isUser ? "items-end" : "items-start"}`}>
+      <div className={`max-w-[85%] md:max-w-[75%] flex flex-col ${isUser ? "items-end" : "items-start"}`}>
         {!isUser && (
           <span className="text-[11px] font-medium text-indigo-500 mb-1 ml-1">Academic Advisor</span>
         )}
@@ -155,6 +155,7 @@ export default function Dashboard() {
   const [activeSession, setActiveSession] = useState<number | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState<boolean>(false);
   const [sidebarTab, setSidebarTab] = useState<"quick" | "history">("quick");
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -194,6 +195,7 @@ export default function Dashboard() {
     setMessages(prev => [...prev, userMsg]);
     setCommand("");
     setLoading(true);
+    setIsSidebarOpen(false); // Close mobile menu drawer on selection
 
     try {
       const response = await axios.post("https://chatbot-project-dqu7.onrender.com/api/chat/", { message: content });
@@ -223,14 +225,17 @@ export default function Dashboard() {
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+      if (window.innerWidth >= 768) {
+        e.preventDefault();
+        sendMessage();
+      }
     }
   };
 
   const startNewChat = () => {
     setMessages(INITIAL_MESSAGES);
     setActiveSession(null);
+    setIsSidebarOpen(false);
   };
 
   const charCount = command.length;
@@ -251,13 +256,21 @@ export default function Dashboard() {
         .chat-scroll::-webkit-scrollbar-track { background: transparent; }
       `}</style>
 
-      <div className="min-h-screen flex bg-slate-100 font-sans">
+      <div className="h-screen flex bg-slate-100 font-sans overflow-hidden relative">
 
-        {/* ── Sidebar ── */}
-        <aside className="w-72 flex-shrink-0 flex flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 border-r border-white/5">
+        {/* ── Mobile Sidebar Backdrop ── */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-slate-900/60 z-40 md:hidden backdrop-blur-xs transition-opacity"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
 
-          {/* Brand */}
-          <div className="px-5 pt-7 pb-5">
+        {/* ── Sidebar (Responsive Drawer) ── */}
+        <aside className={`fixed inset-y-0 left-0 w-72 flex-shrink-0 flex flex-col bg-gradient-to-b from-slate-900 via-slate-900 to-indigo-950 border-r border-white/5 z-50 transform md:transform-none md:relative transition-transform duration-300 ease-in-out ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}>
+
+          {/* Brand & Mobile Close button */}
+          <div className="px-5 pt-7 pb-5 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/40">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -272,6 +285,15 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+            {/* Close drawer button for mobile */}
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden text-slate-400 hover:text-white p-1"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
 
           {/* New Chat */}
@@ -325,7 +347,10 @@ export default function Dashboard() {
                 {MOCK_SESSIONS.map(s => (
                   <button
                     key={s.id}
-                    onClick={() => setActiveSession(s.id)}
+                    onClick={() => {
+                      setActiveSession(s.id);
+                      setIsSidebarOpen(false);
+                    }}
                     className={`w-full px-3.5 py-2.5 rounded-xl text-left transition-all duration-150 ${
                       activeSession === s.id
                         ? "bg-indigo-500/20 border border-indigo-500/30 text-white"
@@ -359,24 +384,36 @@ export default function Dashboard() {
           </div>
         </aside>
 
-        {/* ── Main ── */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* ── Main Layout ── */}
+        <div className="flex-1 flex flex-col min-w-0 h-full">
 
           {/* Header */}
-          <header className="bg-white border-b border-slate-100 px-8 py-4 flex items-center justify-between flex-shrink-0 shadow-sm">
-            <div>
-              <h1 className="text-[17px] font-semibold text-slate-900 tracking-tight">Student Academic Advisor</h1>
-              <p className="text-[12.5px] text-slate-400 mt-0.5">GPA · Course Registration · Graduation Requirements · University Info</p>
+          <header className="bg-white border-b border-slate-100 px-4 md:px-8 py-4 flex items-center justify-between flex-shrink-0 shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Menu Button for Mobile */}
+              <button 
+                onClick={() => setIsSidebarOpen(true)}
+                className="md:hidden text-slate-500 hover:text-slate-700 p-1 flex-shrink-0"
+              >
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+              </button>
+              <div className="truncate">
+                <h1 className="text-base md:text-[17px] font-semibold text-slate-900 tracking-tight truncate">Student Advisor</h1>
+                <p className="hidden md:block text-[12.5px] text-slate-400 mt-0.5">GPA · Course Registration · Graduation Requirements</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                {["GPA", "Courses", "Graduation"].map(tag => (
-                  <span key={tag} className="bg-indigo-50 text-indigo-600 text-[11.5px] font-medium px-2.5 py-1 rounded-lg border border-indigo-100">
+            
+            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+              <div className="hidden sm:flex gap-1.5">
+                {["GPA", "Courses"].map(tag => (
+                  <span key={tag} className="bg-indigo-50 text-indigo-600 text-[11px] font-medium px-2 py-0.5 rounded-lg border border-indigo-100">
                     {tag}
                   </span>
                 ))}
               </div>
-              <div className="w-px h-5 bg-slate-200 mx-1" />
+              <div className="hidden sm:block w-px h-5 bg-slate-200 mx-1" />
               <button className="w-8 h-8 rounded-lg hover:bg-slate-50 border border-transparent hover:border-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-all">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -390,11 +427,11 @@ export default function Dashboard() {
             </div>
           </header>
 
-          {/* Messages */}
+          {/* Messages Containment Grid */}
           <div
             ref={scrollRef}
             onScroll={handleScroll}
-            className="chat-scroll flex-1 overflow-y-auto px-8 py-7 bg-slate-50 relative"
+            className="chat-scroll flex-1 overflow-y-auto px-4 md:px-8 py-6 bg-slate-50 relative"
           >
             <div className="flex items-center gap-3 mb-6">
               <div className="flex-1 h-px bg-slate-200" />
@@ -411,9 +448,9 @@ export default function Dashboard() {
             <ScrollToBottom show={showScrollBtn} onClick={scrollToBottom} />
           </div>
 
-          {/* Input */}
-          <div className="bg-white border-t border-slate-100 px-8 py-4 flex-shrink-0">
-            <div className="flex gap-3 items-end bg-slate-50 border border-slate-200 rounded-2xl pl-4 pr-3 py-3 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all duration-200 shadow-sm">
+          {/* Input Footprint Area */}
+          <div className="bg-white border-t border-slate-100 px-4 md:px-8 py-3 md:py-4 flex-shrink-0">
+            <div className="flex gap-3 items-end bg-slate-50 border border-slate-200 rounded-2xl pl-4 pr-3 py-2.5 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all duration-200 shadow-sm">
               <textarea
                 ref={textareaRef}
                 value={command}
@@ -421,7 +458,7 @@ export default function Dashboard() {
                 onKeyDown={handleKey}
                 placeholder="Ask any academic question…"
                 rows={1}
-                className="flex-1 bg-transparent resize-none text-sm text-slate-800 placeholder:text-slate-400 outline-none leading-relaxed overflow-hidden pt-0.5 font-sans"
+                className="flex-1 bg-transparent resize-none text-sm text-slate-800 placeholder:text-slate-400 outline-none leading-relaxed overflow-hidden pt-1 font-sans"
                 style={{ minHeight: "24px", maxHeight: "120px" }}
               />
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -447,8 +484,9 @@ export default function Dashboard() {
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-between mt-2 px-1">
-              <p className="text-[11px] text-slate-400">Enter to send · Shift + Enter for new line</p>
+            <div className="flex items-center justify-between mt-1.5 px-1">
+              <p className="text-[11px] text-slate-400 hidden sm:block">Enter to send · Shift + Enter for new line</p>
+              <p className="text-[11px] text-slate-400 sm:hidden">Tap send to messaging</p>
               <p className="text-[11px] text-slate-300">{charCount}/{charLimit}</p>
             </div>
           </div>
